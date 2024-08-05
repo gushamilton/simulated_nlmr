@@ -1,0 +1,200 @@
+---
+title: "nlmr_simulations_confounder"
+author: "Fergus Hamilton + Tianyuan Lu"
+date: "2023-09-06"
+output: html_document
+---
+
+Simulation with confounder was conducted with the following setting, where there was no causal effect of the exposure $X$ on the outcome $Y$ such that the association between $X$ and $Y$ was purely due to the confounder $U$. The instrument $G$ and the confounder $U$ can have an interaction effect on $X$.
+
+$X=0.3G+\beta_{UX}U+\beta_{GUX}GU+\epsilon_X$
+
+$Y=\beta_{UY}U+\epsilon_Y$
+
+We explored the impact of the $G$-by-$U$ interaction effect size by fixing $\beta_{UX}=0.3$ and $\beta_{UY}=0.3$, and varying $\beta_{GUX}\in\{-0.1,-0.02,0,0.02,0.1\}$. When $\beta_{GUX}=0$, there was no $G$-by-$U$ interaction effect.
+
+We explored the impact of the confounding effect size by fixing $\beta_{GUX}=-0.1$, and separately varying $\beta_{UY}\in\{0,0.05,0.3\}$ and $\beta_{UX}\in\{0,0.05,0.3\}$. When $\beta_{UY}=0$, there was no confounding effect, despite the $G$-by-$U$ interaction effect on $X$.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+## Load needed packages ###
+library(tidyverse)
+library(broom)
+library(patchwork)
+library(mgcv)
+library(metafor)
+library(faux)
+library(lmtest)
+library(vroom)
+
+## Load my functions ###
+
+# YOU'll have to change this!
+f = list.files("required_functions/")
+
+f
+for(file in f){
+  print(file)
+  source(paste0("required_functions/",file))
+}
+
+```
+
+
+```{r}
+analyses <- tibble(
+  exposures = c("x"),
+  outcomes = c("y")
+)
+
+# FIGURE 1 of this section
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 50, bux = 0.3, buy = 0.3, bgux = -0.1, .f = generate_outcome_plots_linear_replicates_confounder, covariates = "u_incomplete", u_cor =0.1)
+
+# SUP FIGURE 1 of this section
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0.3, buy = 0.3, bgux = -0.02, .f = generate_outcome_plots_linear_replicates_confounder)
+
+# SUP FIGURE 2
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0.3, buy = 0.3, bgux = 0, .f = generate_outcome_plots_linear_replicates_confounder)
+
+# SUP FIGURE 3
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0.3, buy = 0.3, bgux = 0.02, .f = generate_outcome_plots_linear_replicates_confounder)
+
+# SUP FIGURE 4
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0.3, buy = 0.3, bgux = 0.1, .f = generate_outcome_plots_linear_replicates_confounder)
+
+#  sup figure 5 and 6 - varying byz
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0.05, buy = 0.3, bgux = -0.1, .f = generate_outcome_plots_linear_replicates_confounder)
+
+#  sup figure 6
+
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0, buy = 0.3, bgux = -0.1, .f = generate_outcome_plots_linear_replicates_confounder)
+
+
+# Figure 2 of this section
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0.3, buy = 0.05, bgux = -0.1, .f = generate_outcome_plots_linear_replicates_confounder)
+
+
+#  sup figure 6
+
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0.3, buy = 0, bgux = -0.1, .f = generate_outcome_plots_linear_replicates_confounder)
+
+
+
+
+```
+
+confirm the IV and confounder become associated
+
+```{r}
+
+s <- sim_mydata_outcomes_confounder(bux = 0.05, buy = 0.3, bgux = -0.1, seed = 2023)
+
+s %>%
+  mutate(strat = generate_ranked_strata(g,x,10)) %>%
+  ggplot(aes(x = x, y = u)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~ strat)
+```
+
+Kates suggestion: add a strong confounder of x and y (v), and interaction (bgux = 0.01)
+
+```{r}
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = -0.3, buy = 0, bgux = -0.1, bv= 1,.f = generate_outcome_plots_linear_replicates_confounder)
+
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = -0.3, buy = 0, bgux = -0.1, bv= 0.3,.f = generate_outcome_plots_linear_replicates_confounder)
+
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0.3, buy = 0, bgux = -0.1, bv= 1,.f = generate_outcome_plots_linear_replicates_confounder)
+
+
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0, buy = 0, bgux = -0.1, bv= 1,.f = generate_outcome_plots_linear_replicates_confounder)
+```
+
+Test adjusting for the interacting variable
+
+```{r}
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0, buy = 0, bgux = -0.1, bv= 1,.f = generate_outcome_plots_linear_replicates_confounder, covariates = "v")
+```
+
+
+Now, fernandos suggestion of a variance approach
+
+```{r}
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 203, reps = 100,
+     bux= 0, buy = 0, g_sd = 0.5, bx = 0.3,.f = generate_outcome_plots_vQTL)
+
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 203, reps = 100,
+     bux= 0.5, buy = 0.5, g_sd = 0.5, bx = 0.3,.f = generate_outcome_plots_vQTL)
+
+#  test no mean effect
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 23, reps = 100,
+     bux= 0.5, buy = 0.5, g_sd = 0.5, bx = 0,.f = generate_outcome_plots_vQTL)
+
+
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 23, reps = 100,
+     bux= 1, buy = 1, g_sd = 0, bx = 0.3, u_sd = 1,.f = generate_outcome_plots_vQTL)
+```
+
+Now to explain why
+
+```{r}
+s <- sim_mydata_outcomes_vQTL(seed = 203, n = 100000, g_sd = 1, bx = 0)
+
+s %>%
+  mutate(strat = generate_ranked_strata(g,x,10)) %>%
+  ggplot(aes(x = g, y = y)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~ strat)
+
+
+
+
+p1 <- s %>%
+  as_tibble() %>%
+  mutate(pre_strata = ntile(g, 1000)) %>%
+  group_by(pre_strata) %>%
+  summarise(sd_x = sd(x)^2) %>%
+  ggplot() +
+  geom_point(aes(x = pre_strata, y = sd_x)  ) +
+  theme_bw() +
+  xlab("Pre-strata") +
+  ylab("Variance of the exposure")
+
+p2 <- s %>%
+  as_tibble() %>%
+  mutate(pre_strata = ntile(g, 1000)) %>%
+  mutate(dr = generate_ranked_strata(g,x,100)) %>%
+  ggplot() +
+  geom_point(aes(x = g, y = x), alpha = 0.1) +
+    geom_smooth(aes(x = g, y = x))  +
+  theme_bw() +
+  xlab("Level of the IV (g)") +
+  ylab("Level of the exposure (x)")
+
+
+
+p3 <- s %>%
+  as_tibble() %>%
+  mutate(pre_strata = ntile(g, 1000)) %>%
+  mutate(dr = generate_ranked_strata(g,x,100)) %>%
+  filter(dr == 100 | dr == 1) %>%
+  # filter(strat == 1000 | strat == 1) %>%
+  ggplot() +
+  geom_smooth(aes(x = g, y = x, group = dr))  +
+  geom_point(aes(x = g, y = x, colour = pre_strata)) +
+  theme_bw() +
+  xlab("Level of the IV (g)") +
+  ylab("Level of the exposure (x)")
+
+
+
+
+
+p1/p2/p3 + plot_annotation(tag_levels = "A")
+ggsave("figures/explain_why_variance_matters.png", height = 12, width = 8)
+
+  
+```
+
