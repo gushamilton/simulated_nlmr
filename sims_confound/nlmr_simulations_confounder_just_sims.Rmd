@@ -31,12 +31,12 @@ library(vroom)
 ## Load my functions ###
 
 # YOU'll have to change this!
-f = list.files("required_functions/")
+f = list.files("zipped/required_functions/")
 
 f
 for(file in f){
   print(file)
-  source(paste0("required_functions/",file))
+  source(paste0("zipped/required_functions/",file))
 }
 
 ```
@@ -49,7 +49,7 @@ analyses <- tibble(
 )
 
 # FIGURE 1 of this section
-map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 50, bux = 0.3, buy = 0.3, bgux = -0.1, .f = generate_outcome_plots_linear_replicates_confounder, covariates = "u_incomplete", u_cor =0.1)
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0.3, buy = 0.3, bgux = -0.1, .f = generate_outcome_plots_linear_replicates_confounder)
 
 # SUP FIGURE 1 of this section
 map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0.3, buy = 0.3, bgux = -0.02, .f = generate_outcome_plots_linear_replicates_confounder)
@@ -80,6 +80,11 @@ map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, b
 map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0.3, buy = 0, bgux = -0.1, .f = generate_outcome_plots_linear_replicates_confounder)
 
 
+
+# sup figure 7
+
+
+map2(.x = analyses$exposures, .y = analyses$outcomes, seed = 2023, reps = 100, bux = 0.3, buy = 0.3, bgux = -0.1, covariates = "u_incomplete", u_cor = 0.8,.f = generate_outcome_plots_linear_replicates_confounder)
 
 
 ```
